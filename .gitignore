@@ -1,0 +1,44 @@
+__pycache__/
+*.pyc
+
+.venv/
+venv/
+env/
+
+
+*.npz
+*.npy
+*.pkl
+# Model checkpoints
+*.pth
+*.pth.tar
+*.ckpt
+*.pt
+# MotionCLIP experiment outputs
+MotionCLIP_experiment/embeddings/
+MotionCLIP_experiment/**/checkpoint_*.pth*
+MotionCLIP_experiment/**/checkpoint_*.tar
+MotionCLIP_experiment/MotionCLIP/src/models/
+MotionCLIP_experiment/MotionCLIP/src/datasets/
+MotionCLIP_experiment/MotionCLIP/src/visuals/
+MotionCLIP_experiment/optuna_dbs/
+MotionCLIP_experiment/pca_plots/
+MotionCLIP_experiment/plots/
+# Dataset files
+MotionCLIP_ready_datasetFinalAll/
+
+
+logs/
+*.log
+slurm-*.out
+
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.toc
+
+.DS_Store
+__MACOSX/

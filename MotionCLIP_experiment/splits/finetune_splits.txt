@@ -1,0 +1,6 @@
+dropping: 6,7,9,10
+office: 29,30,31,34
+brushing: 2,4,5
+random5: 30,34,35,53
+random6: 3,20,22,25
+random9: 19,35,44,51

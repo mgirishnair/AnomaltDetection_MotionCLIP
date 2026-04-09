@@ -1,0 +1,6 @@
+brushing - 0.7304
+dropping - 0.6587
+office - 0.7824
+random5 - 0.7144
+random6 - 0.7495
+random9 - 0.6843
