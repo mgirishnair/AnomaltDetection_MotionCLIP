@@ -1,6 +1,6 @@
 #!/bin/sh
 #SBATCH --job-name="pose_to_smpl"
-#SBATCH --partition=gpu-a100
+#SBATCH --partition=gpu-a100-small
 #SBATCH --time=00:45:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
