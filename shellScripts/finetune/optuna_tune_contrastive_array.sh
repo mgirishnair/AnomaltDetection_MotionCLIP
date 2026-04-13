@@ -9,12 +9,12 @@
 #SBATCH --mem-per-gpu=16G
 #SBATCH --account=Education-EEMCS-MSc-DSAIT
 #SBATCH --array=0-5
-#SBATCH --output=/scratch/mgirishnair/SLURM_logs/optuna/%x_%A_%a.out
+#SBATCH --output=/scratch/mgirishnair/Thesis/SLURM_logs/optuna/testSplitwise/%x_%A_%a.out
 
 echo "Job started on $(hostname)"
 echo "SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID}"
 
-cd /scratch/mgirishnair/MotionCLIP_experiment
+cd /scratch/mgirishnair/Thesis/MotionCLIP_experiment
 
 module load miniconda3
 module load 2024r1
@@ -23,7 +23,7 @@ module load cuda/11.7
 source ~/.bashrc
 conda activate motionclip
 
-SPLITS_TXT="/scratch/mgirishnair/MotionCLIP_experiment/finetune_splits.txt"
+SPLITS_TXT="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/splits/finetune_splits.txt"
 
 LINE_NUM=$((SLURM_ARRAY_TASK_ID + 1))
 LINE=$(sed -n "${LINE_NUM}p" "${SPLITS_TXT}")
@@ -48,19 +48,19 @@ NORMAL_CLASSES=$(echo "${CLASS_STR}" | tr ',' ' ' | xargs)
 echo "Parsed split name: ${SPLIT_NAME}"
 echo "Parsed normal classes: ${NORMAL_CLASSES}"
 
-python /scratch/mgirishnair/MotionCLIP_experiment/tune_motionclip_optuna_splitwise.py \
+python /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/tune_motionclip_optuna_splitwise.py \
   --mode contrastive \
   --study_name "motionclip_contrastive_${SPLIT_NAME}" \
-  --storage "sqlite:////scratch/mgirishnair/MotionCLIP_experiment/optuna_dbs/motionclip_contrastive_${SPLIT_NAME}_2.db" \
-  --n_trials 25 \
+  --storage "sqlite:////scratch/mgirishnair/Thesis/MotionCLIP_experiment/optuna_dbs/positiveLoss/testSplitwise/motionclip_contrastive_${SPLIT_NAME}.db" \
+  --n_trials 30 \
   --split_name "${SPLIT_NAME}" \
   --normal_classes ${NORMAL_CLASSES} \
-  --contrastive_script /scratch/mgirishnair/MotionCLIP_experiment/finetune_contrastive_split.py \
-  --x_path /scratch/mgirishnair/MotionCLIP_ready_datasetFinalAll/X.npy \
-  --y_path /scratch/mgirishnair/MotionCLIP_ready_datasetFinalAll/y.npy \
+  --contrastive_script /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/finetune_contrastive_split.py \
+  --x_path /scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/X.npy \
+  --y_path /scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/y.npy \
   --motionclip_repo MotionCLIP \
   --checkpoint_path MotionCLIP/exps/paper-model/checkpoint_0100.pth.tar \
-  --work_dir /scratch/mgirishnair/MotionCLIP_experiment/optuna_runs \
+  --work_dir optuna_runs/testSplitwise \
   --train_fraction 0.8 \
   --val_fraction 0.1 \
   --epochs 100 \

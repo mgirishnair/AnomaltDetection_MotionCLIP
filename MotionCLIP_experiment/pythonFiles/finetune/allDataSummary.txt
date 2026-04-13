@@ -1,0 +1,6 @@
+brushing: lr_encoder=7.106089127319183e-06, contrastive_temp=0.10083485170313734, n_samples_per_class=6, weight_decay=0.0001381865156070137
+dropping: lr_encoder=7.106089127319183e-06, contrastive_temp=0.10083485170313734, n_samples_per_class=6, weight_decay=0.0001381865156070137
+office: lr_encoder=7.106089127319183e-06, contrastive_temp=0.10083485170313734, n_samples_per_class=6, weight_decay=0.0001381865156070137
+random5: lr_encoder=7.106089127319183e-06, contrastive_temp=0.10083485170313734, n_samples_per_class=6, weight_decay=0.0001381865156070137
+random6: lr_encoder=7.106089127319183e-06, contrastive_temp=0.10083485170313734, n_samples_per_class=6, weight_decay=0.0001381865156070137
+random9: lr_encoder=7.106089127319183e-06, contrastive_temp=0.10083485170313734, n_samples_per_class=6, weight_decay=0.0001381865156070137

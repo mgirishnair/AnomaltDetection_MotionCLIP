@@ -1,7 +1,7 @@
 #!/bin/sh
 
-#SBATCH --job-name="motionclip_finetune_contrastiveSplit"
-#SBATCH --partition=gpu-a100-small
+#SBATCH --job-name="motionclip_finetune_contrastiveSplit_positiveLoss"
+#SBATCH --partition=gpu-a100
 #SBATCH --time=02:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
@@ -9,13 +9,13 @@
 #SBATCH --mem-per-gpu=16G
 #SBATCH --account=Education-EEMCS-MSc-DSAIT
 #SBATCH --array=0-5
-#SBATCH --output=/scratch/mgirishnair/SLURM_logs/finetune/%x_%A_%a.out
+#SBATCH --output=/scratch/mgirishnair/Thesis/SLURM_logs/finetune/%x_%A_%a.out
 
 echo "Job started on $(hostname)"
 echo "SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID}"
 
 # go to project folder
-cd /scratch/mgirishnair/MotionCLIP_experiment
+cd /scratch/mgirishnair/Thesis/MotionCLIP_experiment
 
 module load miniconda3
 module load 2024r1
@@ -25,8 +25,8 @@ module load cuda/11.7
 source ~/.bashrc
 conda activate motionclip
 
-SPLITS_TXT="/scratch/mgirishnair/MotionCLIP_experiment/finetune_splits.txt"
-HPARAMS_TXT="/scratch/mgirishnair/SLURM_logs/optuna/optuna_outputs/optuna_results.txt"
+SPLITS_TXT="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/splits/finetune_splits.txt"
+HPARAMS_TXT="/scratch/mgirishnair/Thesis/SLURM_logs/optuna/contrastive_splitwise_positiveLoss/output_summary.txt"
 
 
 # 0-based: task 0 reads line 1, task 1 reads line 2, ...
@@ -86,9 +86,9 @@ echo "  weight_decay=${WEIGHT_DECAY}"
 echo "  n_classes_per_batch=${N_CLASSES_PER_BATCH}"
 echo "  batch_size=${BATCH_SIZE}"
 
-python /scratch/mgirishnair/MotionCLIP_experiment/finetune_contrastive_split.py \
-  --x_path /scratch/mgirishnair/MotionCLIP_ready_datasetFinalAll/X.npy \
-  --y_path /scratch/mgirishnair/MotionCLIP_ready_datasetFinalAll/y.npy \
+python /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/finetune_contrastive_split.py \
+  --x_path /scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/X.npy \
+  --y_path /scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/y.npy \
   --motionclip_repo MotionCLIP \
   --checkpoint_path MotionCLIP/exps/paper-model/checkpoint_0100.pth.tar \
   --split_name "${SPLIT_NAME}" \
@@ -111,7 +111,7 @@ python /scratch/mgirishnair/MotionCLIP_experiment/finetune_contrastive_split.py 
   --scheduler_min_lr 1e-7 \
   --min_delta 0.0 \
   --num_workers 2 \
-  --output_dir /scratch/mgirishnair/MotionCLIP_experiment/finetune/contrastive_splitwise/final \
+  --output_dir /scratch/mgirishnair/Thesis/MotionCLIP_experiment/finetune/contrastive_splitwise_positiveLoss \
   --save_checkpoint motionclip_finetuned_${SPLIT_NAME}.pth \
   --save_metrics_npz finetune_metrics_${SPLIT_NAME}.npz \
   --save_summary finetune_summary_${SPLIT_NAME}.json

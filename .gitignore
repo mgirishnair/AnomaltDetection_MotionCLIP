@@ -26,7 +26,11 @@ MotionCLIP_experiment/pca_plots/
 MotionCLIP_experiment/plots/
 # Dataset files
 MotionCLIP_ready_datasetFinalAll/
-
+#SLURM logs
+SLURM_logs/
+#NTU datasets
+ntu_60-120_skeletons/
+ntu_dataset.zip
 
 logs/
 *.log

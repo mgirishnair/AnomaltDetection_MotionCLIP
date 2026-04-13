@@ -5,6 +5,7 @@ import json
 import random
 import argparse
 from collections import defaultdict
+from typing import Dict, List, Tuple, Optional, Any
 
 import numpy as np
 import torch
@@ -12,19 +13,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, BatchSampler
 
-#BASE_DIR = os.path.dirname(__file__)
-#motionclip_path = os.path.abspath(os.path.join("..", ".."))
-#sys.path.append(motionclip_path)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
 from MotionCLIP.src.models.architectures.transformer import Encoder_TRANSFORMER
 
+
 # --------------------------------------------------
 # Utils
 # --------------------------------------------------
-def set_seed(seed):
+def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -32,12 +31,12 @@ def set_seed(seed):
         torch.cuda.manual_seed_all(seed)
 
 
-def save_training_summary(summary, save_path):
+def save_json(obj: Dict[str, Any], save_path: str) -> None:
     with open(save_path, "w") as f:
-        json.dump(summary, f, indent=2)
+        json.dump(obj, f, indent=2)
 
 
-def save_epoch_metrics_npz(history, save_path):
+def save_epoch_metrics_npz(history: List[Dict[str, Any]], save_path: str) -> None:
     epochs = np.array([h["epoch"] for h in history], dtype=np.int64)
     train_loss = np.array([h["train_loss"] for h in history], dtype=np.float32)
 
@@ -58,7 +57,27 @@ def save_epoch_metrics_npz(history, save_path):
     )
 
 
-def stratified_split_indices(y, val_fraction=0.1, seed=42):
+def summarize_split(y: np.ndarray, indices: np.ndarray, name: str) -> None:
+    if len(indices) == 0:
+        print(f"\n{name} split is empty.")
+        return
+
+    y_subset = np.asarray(y[indices], dtype=np.int64)
+    counts = defaultdict(int)
+    for cls in y_subset:
+        counts[int(cls)] += 1
+
+    print(f"\n{name} split class coverage:")
+    print(f"num classes      : {len(counts)}")
+    print(f"min samples/class: {min(counts.values())}")
+    print(f"max samples/class: {max(counts.values())}")
+
+
+def stratified_split_indices(
+    y: np.ndarray,
+    val_fraction: float = 0.1,
+    seed: int = 42,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Class-balanced train/val split for a provided y array.
     Returns indices relative to that y array.
@@ -96,19 +115,24 @@ def stratified_split_indices(y, val_fraction=0.1, seed=42):
     return train_idx, val_idx
 
 
-def stratified_train_test_indices_for_classes(y, normal_classes, train_fraction=0.8, seed=42):
+def stratified_train_test_indices_all_classes(
+    y: np.ndarray,
+    train_fraction: float = 0.8,
+    seed: int = 42,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Build reproducible train/test split using only the given normal classes.
+    Build reproducible train/test split using ALL classes in y.
     train_fraction is usually 0.8.
     Returns absolute dataset indices.
     """
     rng = np.random.default_rng(seed)
     y = np.asarray(y)
+    all_classes = np.unique(y)
 
     train_idx = []
     test_idx = []
 
-    for cls in normal_classes:
+    for cls in all_classes:
         cls_idx = np.where(y == cls)[0].copy()
         if len(cls_idx) == 0:
             raise ValueError(f"No samples found for class {cls}")
@@ -133,40 +157,46 @@ def stratified_train_test_indices_for_classes(y, normal_classes, train_fraction=
     return train_idx, test_idx
 
 
-def save_split_artifacts(save_path, split_name, normal_classes, class_to_local, train_idx, test_idx, seed):
+def save_index_artifacts(
+    save_path: str,
+    run_name: str,
+    all_classes: List[int],
+    class_to_local: Dict[int, int],
+    train80_idx: np.ndarray,
+    test20_idx: np.ndarray,
+    actual_train_idx: np.ndarray,
+    val_idx: np.ndarray,
+    seed: int,
+    train_fraction: float,
+    val_fraction: float,
+) -> None:
     np.savez(
         save_path,
-        split_name=np.array(split_name),
-        normal_classes=np.array(normal_classes, dtype=np.int64),
+        run_name=np.array(run_name),
+        all_classes=np.array(all_classes, dtype=np.int64),
         class_to_local_keys=np.array(list(class_to_local.keys()), dtype=np.int64),
         class_to_local_vals=np.array(list(class_to_local.values()), dtype=np.int64),
-        train_idx=np.asarray(train_idx, dtype=np.int64),
-        test_idx=np.asarray(test_idx, dtype=np.int64),
+        train80_idx=np.asarray(train80_idx, dtype=np.int64),
+        test20_idx=np.asarray(test20_idx, dtype=np.int64),
+        actual_train_idx=np.asarray(actual_train_idx, dtype=np.int64),
+        val_idx=np.asarray(val_idx, dtype=np.int64),
         seed=np.array(seed, dtype=np.int64),
+        train_fraction=np.array(train_fraction, dtype=np.float32),
+        val_fraction=np.array(val_fraction, dtype=np.float32),
     )
-
-
-def summarize_split(y, indices, name):
-    if len(indices) == 0:
-        print(f"\n{name} split is empty.")
-        return
-
-    y_subset = np.asarray(y[indices], dtype=np.int64)
-    counts = defaultdict(int)
-    for cls in y_subset:
-        counts[int(cls)] += 1
-
-    print(f"\n{name} split class coverage:")
-    print(f"num classes: {len(counts)}")
-    print(f"min samples/class: {min(counts.values())}")
-    print(f"max samples/class: {max(counts.values())}")
 
 
 # --------------------------------------------------
 # Dataset
 # --------------------------------------------------
-class NTURot6dSplitDataset(Dataset):
-    def __init__(self, X, y, indices, class_to_local):
+class NTURot6dDataset(Dataset):
+    def __init__(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        indices: np.ndarray,
+        class_to_local: Dict[int, int],
+    ):
         assert X.ndim == 4, f"Expected 4D array, got shape {X.shape}"
         assert X.shape[1:] == (60, 25, 6), f"Expected [N, 60, 25, 6], got {X.shape}"
 
@@ -180,19 +210,22 @@ class NTURot6dSplitDataset(Dataset):
         if bad:
             raise ValueError(f"Found labels not in class_to_local: {bad}")
 
-        self.local_labels = np.array([self.class_to_local[int(lbl)] for lbl in ys], dtype=np.int64)
+        self.local_labels = np.array(
+            [self.class_to_local[int(lbl)] for lbl in ys],
+            dtype=np.int64,
+        )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.indices)
 
-    def get_label(self, idx):
+    def get_label(self, idx: int) -> int:
         return int(self.local_labels[idx])
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         real_idx = int(self.indices[idx])
 
-        pose = np.array(self.X[real_idx], dtype=np.float32, copy=True)   # [60, 25, 6]
-        pose = np.transpose(pose, (1, 2, 0)).copy()                      # [25, 6, 60]
+        pose = np.array(self.X[real_idx], dtype=np.float32, copy=True)  # [60, 25, 6]
+        pose = np.transpose(pose, (1, 2, 0)).copy()                     # [25, 6, 60]
 
         label_global = int(self.y[real_idx])
         label_local = int(self.class_to_local[label_global])
@@ -204,7 +237,7 @@ class NTURot6dSplitDataset(Dataset):
         }
 
 
-def collate_motionclip(batch):
+def collate_motionclip(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
     x = torch.stack([b["x"] for b in batch], dim=0)          # [B, 25, 6, 60]
     y = torch.stack([b["y"] for b in batch], dim=0)          # [B]
     lengths = torch.stack([b["lengths"] for b in batch], 0)  # [B]
@@ -231,7 +264,13 @@ class ClassAwareBatchSampler(BatchSampler):
 
     batch_size = n_classes_per_batch * n_samples_per_class
     """
-    def __init__(self, dataset, n_classes_per_batch, n_samples_per_class, batches_per_epoch=None):
+    def __init__(
+        self,
+        dataset: NTURot6dDataset,
+        n_classes_per_batch: int,
+        n_samples_per_class: int,
+        batches_per_epoch: Optional[int] = None,
+    ):
         self.dataset = dataset
         self.n_classes_per_batch = int(n_classes_per_batch)
         self.n_samples_per_class = int(n_samples_per_class)
@@ -245,7 +284,9 @@ class ClassAwareBatchSampler(BatchSampler):
         for idx in range(len(dataset)):
             class_to_indices[dataset.get_label(idx)].append(idx)
 
-        self.class_to_indices = {c: np.array(v, dtype=np.int64) for c, v in class_to_indices.items()}
+        self.class_to_indices = {
+            c: np.array(v, dtype=np.int64) for c, v in class_to_indices.items()
+        }
         self.classes = np.array(sorted(self.class_to_indices.keys()), dtype=np.int64)
 
         if len(self.classes) < self.n_classes_per_batch:
@@ -264,7 +305,7 @@ class ClassAwareBatchSampler(BatchSampler):
             chosen_classes = np.random.choice(
                 self.classes,
                 size=self.n_classes_per_batch,
-                replace=False
+                replace=False,
             )
 
             batch = []
@@ -274,21 +315,21 @@ class ClassAwareBatchSampler(BatchSampler):
                 sampled = np.random.choice(
                     cls_indices,
                     size=self.n_samples_per_class,
-                    replace=replace
+                    replace=replace,
                 )
                 batch.extend(sampled.tolist())
 
             random.shuffle(batch)
             yield batch
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.batches_per_epoch
 
 
 # --------------------------------------------------
 # MotionCLIP encoder
 # --------------------------------------------------
-def build_motionclip_encoder(checkpoint_path, device):
+def build_motionclip_encoder(checkpoint_path: str, device: str) -> nn.Module:
     encoder = Encoder_TRANSFORMER(
         modeltype="motionclip",
         njoints=25,
@@ -330,7 +371,7 @@ def build_motionclip_encoder(checkpoint_path, device):
     return encoder
 
 
-def freeze_encoder_except_last_layers(encoder, num_trainable_blocks=2):
+def freeze_encoder_except_last_layers(encoder: nn.Module, num_trainable_blocks: int = 2) -> None:
     for p in encoder.parameters():
         p.requires_grad = False
 
@@ -359,11 +400,11 @@ def freeze_encoder_except_last_layers(encoder, num_trainable_blocks=2):
 
 
 class MotionCLIPEncoderOnly(nn.Module):
-    def __init__(self, encoder):
+    def __init__(self, encoder: nn.Module):
         super().__init__()
         self.encoder = encoder
 
-    def forward(self, batch):
+    def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         out = self.encoder(batch)
         z = out["mu"]  # [B, 512]
         return z
@@ -373,11 +414,11 @@ class MotionCLIPEncoderOnly(nn.Module):
 # Loss
 # --------------------------------------------------
 class PositiveAttractionLoss(nn.Module):
-    def __init__(self, temperature=0.07):
+    def __init__(self, temperature: float = 0.07):
         super().__init__()
         self.temperature = temperature
 
-    def forward(self, features, labels):
+    def forward(self, features: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         device = features.device
         features = F.normalize(features, dim=1)
 
@@ -396,16 +437,16 @@ class PositiveAttractionLoss(nn.Module):
             return features.new_tensor(0.0)
 
         mean_pos_sim = (sim * positive_mask).sum(dim=1) / (positives_per_row + 1e-12)
-
         loss = -mean_pos_sim[valid_rows].mean()
         return loss
 
+
 class SupervisedContrastiveLoss(nn.Module):
-    def __init__(self, temperature=0.07):
+    def __init__(self, temperature: float = 0.07):
         super().__init__()
         self.temperature = temperature
 
-    def forward(self, features, labels):
+    def forward(self, features: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         device = features.device
         features = F.normalize(features, dim=1)
 
@@ -437,22 +478,22 @@ class SupervisedContrastiveLoss(nn.Module):
 # Train / Eval
 # --------------------------------------------------
 def run_one_epoch(
-    model,
-    loader,
-    optimizer,
-    device,
-    train=True,
-    contrastive_temp=0.07,
-    con_criterion=None,
-):
+    model: nn.Module,
+    loader: DataLoader,
+    optimizer: Optional[torch.optim.Optimizer],
+    device: str,
+    train: bool = True,
+    contrastive_temp: float = 0.07,
+    con_criterion: Optional[nn.Module] = None,
+) -> float:
     if train:
         model.train()
     else:
         model.eval()
 
     if con_criterion is None:
-        #con_criterion = SupervisedContrastiveLoss(temperature=contrastive_temp)
-        con_criterion = PositiveAttractionLoss(temperature=contrastive_temp)
+        con_criterion = SupervisedContrastiveLoss(temperature=contrastive_temp)
+        #con_criterion = PositiveAttractionLoss(temperature=contrastive_temp)
 
     total_loss = 0.0
     total_samples = 0
@@ -464,6 +505,7 @@ def run_one_epoch(
         batch["mask"] = batch["mask"].to(device, non_blocking=True)
 
         if train:
+            assert optimizer is not None
             optimizer.zero_grad(set_to_none=True)
 
         with torch.set_grad_enabled(train):
@@ -478,31 +520,36 @@ def run_one_epoch(
         total_loss += loss.item() * bs
         total_samples += bs
 
-    avg_loss = total_loss / total_samples
+    avg_loss = total_loss / max(total_samples, 1)
     return avg_loss
 
 
-def save_finetuned_encoder(encoder, save_path):
+def save_finetuned_encoder(encoder: nn.Module, save_path: str) -> None:
     state_dict = {f"encoder.{k}": v.cpu() for k, v in encoder.state_dict().items()}
     torch.save(state_dict, save_path)
 
 
 # --------------------------------------------------
-# One split
+# Global training
 # --------------------------------------------------
-def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_classes):
+def finetune_global_all_classes(
+    args: argparse.Namespace,
+    X: np.ndarray,
+    y: np.ndarray,
+    checkpoint_path: str,
+    device: str,
+) -> None:
     print("\n" + "=" * 80)
-    print(f"Split: {split_name}")
-    print(f"Normal classes: {normal_classes}")
+    print(f"Run name: {args.run_name}")
 
-    split_dir = os.path.join(args.output_dir, split_name)
-    os.makedirs(split_dir, exist_ok=True)
+    run_dir = os.path.join(args.output_dir, args.run_name)
+    os.makedirs(run_dir, exist_ok=True)
 
-    class_to_local = {cls: i for i, cls in enumerate(sorted(normal_classes))}
+    all_classes = sorted(int(c) for c in np.unique(y))
+    class_to_local = {cls: i for i, cls in enumerate(all_classes)}
 
-    train80_idx, test20_idx = stratified_train_test_indices_for_classes(
+    train80_idx, test20_idx = stratified_train_test_indices_all_classes(
         y=y,
-        normal_classes=normal_classes,
         train_fraction=args.train_fraction,
         seed=args.seed,
     )
@@ -520,23 +567,29 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
         train_idx = train80_idx
         val_idx = np.array([], dtype=np.int64)
 
-    print(f"Train80 total: {len(train80_idx)}")
-    print(f"Test20 total : {len(test20_idx)}")
-    print(f"Actual train : {len(train_idx)}")
-    print(f"Actual val   : {len(val_idx)}")
+    print(f"Global classes  : {len(all_classes)}")
+    print(f"Train80 total   : {len(train80_idx)}")
+    print(f"Test20 total    : {len(test20_idx)}")
+    print(f"Actual train    : {len(train_idx)}")
+    print(f"Actual val      : {len(val_idx)}")
 
-    summarize_split(y, train_idx, "Train")
+    summarize_split(y, train80_idx, "Global Train80")
+    summarize_split(y, train_idx, "Actual Train")
     summarize_split(y, val_idx, "Val")
-    summarize_split(y, test20_idx, "Held-out Test20")
+    summarize_split(y, test20_idx, "Global Held-out Test20")
 
-    save_split_artifacts(
-        save_path=os.path.join(split_dir, f"{split_name}_split_indices.npz"),
-        split_name=split_name,
-        normal_classes=normal_classes,
+    save_index_artifacts(
+        save_path=os.path.join(run_dir, args.save_indices_npz),
+        run_name=args.run_name,
+        all_classes=all_classes,
         class_to_local=class_to_local,
-        train_idx=train_idx,
-        test_idx=test20_idx,
+        train80_idx=train80_idx,
+        test20_idx=test20_idx,
+        actual_train_idx=train_idx,
+        val_idx=val_idx,
         seed=args.seed,
+        train_fraction=args.train_fraction,
+        val_fraction=args.val_fraction,
     )
 
     encoder = build_motionclip_encoder(
@@ -551,17 +604,17 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
 
     model = MotionCLIPEncoderOnly(encoder=encoder).to(device)
 
-    train_dataset = NTURot6dSplitDataset(X, y, train_idx, class_to_local)
+    train_dataset = NTURot6dDataset(X, y, train_idx, class_to_local)
 
     if args.use_class_aware_sampler:
-        max_classes_available = len(normal_classes)
+        max_classes_available = len(all_classes)
         n_classes_per_batch = min(args.n_classes_per_batch, max_classes_available)
         expected_batch_size = n_classes_per_batch * args.n_samples_per_class
 
         if args.batch_size != expected_batch_size:
             raise ValueError(
-                f"For split '{split_name}', batch_size must equal "
-                f"min(n_classes_per_batch, num_split_classes) * n_samples_per_class = "
+                "batch_size must equal "
+                f"min(n_classes_per_batch, num_classes) * n_samples_per_class = "
                 f"{n_classes_per_batch} * {args.n_samples_per_class} = {expected_batch_size}, "
                 f"but got batch_size={args.batch_size}"
             )
@@ -600,16 +653,42 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
 
     val_loader = None
     if len(val_idx) > 0:
-        val_dataset = NTURot6dSplitDataset(X, y, val_idx, class_to_local)
-        val_loader = DataLoader(
-            val_dataset,
-            batch_size=args.batch_size,
-            shuffle=False,
-            num_workers=args.num_workers,
-            pin_memory=args.pin_memory,
-            collate_fn=collate_motionclip,
-            persistent_workers=True if args.num_workers > 0 else False,
-        )
+        val_dataset = NTURot6dDataset(X, y, val_idx, class_to_local)
+        if args.use_class_aware_sampler:
+            val_batch_sampler = ClassAwareBatchSampler(
+                dataset=val_dataset,
+                n_classes_per_batch=min(args.n_classes_per_batch, len(np.unique(y[val_idx]))),
+                n_samples_per_class=args.n_samples_per_class,
+                batches_per_epoch=max(10, len(val_dataset) // args.batch_size),
+            )
+
+            val_loader = DataLoader(
+                val_dataset,
+                batch_sampler=val_batch_sampler,
+                num_workers=args.num_workers,
+                pin_memory=args.pin_memory,
+                collate_fn=collate_motionclip,
+                persistent_workers=True if args.num_workers > 0 else False,
+            )
+        else:
+            val_loader = DataLoader(
+                val_dataset,
+                batch_size=args.batch_size,
+                shuffle=False,
+                num_workers=args.num_workers,
+                pin_memory=args.pin_memory,
+                collate_fn=collate_motionclip,
+                persistent_workers=True if args.num_workers > 0 else False,
+            )
+            #val_loader = DataLoader(
+            #val_dataset,
+            #batch_size=args.batch_size,
+            #shuffle=False,
+            #num_workers=args.num_workers,
+            #pin_memory=args.pin_memory,
+            #collate_fn=collate_motionclip,
+            #persistent_workers=True if args.num_workers > 0 else False,
+        #)
 
     trainable_encoder = sum(p.numel() for p in model.encoder.parameters() if p.requires_grad)
     total_encoder = sum(p.numel() for p in model.encoder.parameters())
@@ -637,8 +716,8 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
             min_lr=args.scheduler_min_lr,
         )
 
-    #con_criterion = SupervisedContrastiveLoss(temperature=args.contrastive_temp)
-    con_criterion = PositiveAttractionLoss(temperature=args.contrastive_temp)
+    #con_criterion = PositiveAttractionLoss(temperature=args.contrastive_temp)
+    con_criterion = SupervisedContrastiveLoss(temperature=args.contrastive_temp)
 
     best_val_loss = float("inf")
     best_epoch = -1
@@ -664,7 +743,7 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
             val_loss = run_one_epoch(
                 model=model,
                 loader=val_loader,
-                optimizer=optimizer,
+                optimizer=None,
                 device=device,
                 train=False,
                 contrastive_temp=args.contrastive_temp,
@@ -683,7 +762,7 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
             history.append(epoch_record)
 
             print(
-                f"[{split_name}] Epoch {epoch+1:03d}/{args.epochs} | "
+                f"[{args.run_name}] Epoch {epoch+1:03d}/{args.epochs} | "
                 f"lr={current_lr:.2e} | "
                 f"train_loss={train_loss:.4f} | "
                 f"val_loss={val_loss:.4f}"
@@ -703,7 +782,7 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
                 epochs_without_improvement += 1
                 if epochs_without_improvement >= args.patience:
                     print(
-                        f"\n[{split_name}] Early stopping at epoch {epoch+1}. "
+                        f"\n[{args.run_name}] Early stopping at epoch {epoch+1}. "
                         f"Best epoch was {best_epoch} with val_loss={best_val_loss:.4f}"
                     )
                     break
@@ -716,19 +795,19 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
             history.append(epoch_record)
 
             print(
-                f"[{split_name}] Epoch {epoch+1:03d}/{args.epochs} | "
+                f"[{args.run_name}] Epoch {epoch+1:03d}/{args.epochs} | "
                 f"lr={current_lr:.2e} | "
                 f"train_loss={train_loss:.4f}"
             )
 
     summary = {
-        "split_name": split_name,
-        "normal_classes": normal_classes,
+        "run_name": args.run_name,
+        "all_classes": all_classes,
+        "num_classes": len(all_classes),
         "class_to_local": class_to_local,
         "seed": args.seed,
         "train_fraction": args.train_fraction,
         "val_fraction_inside_train80": args.val_fraction,
-        "num_split_classes": len(normal_classes),
         "epochs_requested": args.epochs,
         "batch_size": args.batch_size,
         "patience": args.patience,
@@ -739,6 +818,9 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
         "use_class_aware_sampler": args.use_class_aware_sampler,
         "n_classes_per_batch_requested": args.n_classes_per_batch,
         "n_samples_per_class": args.n_samples_per_class,
+        "num_train_samples": int(len(train_idx)),
+        "num_val_samples": int(len(val_idx)),
+        "num_holdout_test_samples": int(len(test20_idx)),
         "scheduler": {
             "type": "ReduceLROnPlateau" if scheduler is not None else None,
             "factor": args.scheduler_factor,
@@ -751,27 +833,23 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
     if best_state is not None:
         model.encoder.load_state_dict(best_state)
         print(
-            f"\n[{split_name}] Using best validation encoder from epoch {best_epoch} "
+            f"\n[{args.run_name}] Using best validation encoder from epoch {best_epoch} "
             f"(val_loss={best_val_loss:.4f}) before saving."
         )
     else:
-        print(f"\n[{split_name}] No validation split used; saving final encoder.")
+        print(f"\n[{args.run_name}] No validation split used; saving final encoder.")
 
-    checkpoint_name = args.save_checkpoint.format(split=split_name)
-    summary_name = args.save_summary.format(split=split_name)
-    metrics_name = args.save_metrics_npz.format(split=split_name)
-
-    checkpoint_out = os.path.join(split_dir, checkpoint_name)
-    summary_out = os.path.join(split_dir, summary_name)
-    metrics_out = os.path.join(split_dir, metrics_name)
+    checkpoint_out = os.path.join(run_dir, args.save_checkpoint)
+    summary_out = os.path.join(run_dir, args.save_summary)
+    metrics_out = os.path.join(run_dir, args.save_metrics_npz)
 
     save_finetuned_encoder(model.encoder, checkpoint_out)
-    save_training_summary(summary, summary_out)
+    save_json(summary, summary_out)
     save_epoch_metrics_npz(history, metrics_out)
 
-    print(f"[{split_name}] Saved fine-tuned encoder to: {checkpoint_out}")
-    print(f"[{split_name}] Saved training summary to : {summary_out}")
-    print(f"[{split_name}] Saved epoch metrics to    : {metrics_out}")
+    print(f"[{args.run_name}] Saved fine-tuned encoder to: {checkpoint_out}")
+    print(f"[{args.run_name}] Saved training summary to : {summary_out}")
+    print(f"[{args.run_name}] Saved epoch metrics to    : {metrics_out}")
 
 
 # --------------------------------------------------
@@ -780,15 +858,22 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--x_path", type=str, default="/scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/X.npy")
-    parser.add_argument("--y_path", type=str, default="/scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/y.npy")
+    parser.add_argument(
+        "--x_path",
+        type=str,
+        default="/scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/X.npy",
+    )
+    parser.add_argument(
+        "--y_path",
+        type=str,
+        default="/scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/y.npy",
+    )
     parser.add_argument("--motionclip_repo", type=str, default="MotionCLIP")
     parser.add_argument("--checkpoint_path", type=str, default=None)
 
-    parser.add_argument("--splits_txt", type=str, default=None)
-    parser.add_argument("--split_name", type=str, default=None)
-    parser.add_argument("--normal_classes", type=int, nargs="+", default=None)
     parser.add_argument("--train_fraction", type=float, default=0.8)
+    parser.add_argument("--val_fraction", type=float, default=0.1)
+    parser.add_argument("--run_name", type=str, default="global_all_classes_train80")
 
     parser.add_argument("--batch_size", type=int, default=24)
     parser.add_argument("--epochs", type=int, default=150)
@@ -796,17 +881,37 @@ def main():
     parser.add_argument("--weight_decay", type=float, default=1e-4)
     parser.add_argument("--num_trainable_blocks", type=int, default=2)
 
-    parser.add_argument("--val_fraction", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--print_encoder_only", action="store_true")
 
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--min_delta", type=float, default=0.0)
 
-    parser.add_argument("--output_dir", type=str, default="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/finetune/optuna_outputs")
-    parser.add_argument("--save_checkpoint", type=str, default="motionclip_finetuned_{split}.pth")
-    parser.add_argument("--save_summary", type=str, default="finetune_summary_{split}.json")
-    parser.add_argument("--save_metrics_npz", type=str, default="finetune_metrics_{split}.npz")
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/finetune/global_outputs",
+    )
+    parser.add_argument(
+        "--save_checkpoint",
+        type=str,
+        default="motionclip_finetuned_global_all_classes.pth",
+    )
+    parser.add_argument(
+        "--save_summary",
+        type=str,
+        default="finetune_summary_global_all_classes.json",
+    )
+    parser.add_argument(
+        "--save_metrics_npz",
+        type=str,
+        default="finetune_metrics_global_all_classes.npz",
+    )
+    parser.add_argument(
+        "--save_indices_npz",
+        type=str,
+        default="global_split_indices.npz",
+    )
 
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--pin_memory", action="store_true")
@@ -826,15 +931,15 @@ def main():
     set_seed(args.seed)
     os.makedirs(args.output_dir, exist_ok=True)
 
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(base_dir, "..", ".."))
 
-    def resolve_path(path_str):
+    def resolve_path(path_str: Optional[str]) -> Optional[str]:
         if path_str is None:
             return None
         if os.path.isabs(path_str):
             return path_str
-        return os.path.abspath(os.path.join(PROJECT_ROOT, path_str))
+        return os.path.abspath(os.path.join(project_root, path_str))
 
     args.x_path = resolve_path(args.x_path)
     args.y_path = resolve_path(args.y_path)
@@ -842,15 +947,13 @@ def main():
     args.checkpoint_path = resolve_path(args.checkpoint_path) if args.checkpoint_path is not None else None
     args.output_dir = resolve_path(args.output_dir)
 
-
     checkpoint_path = args.checkpoint_path
-   # checkpoint_path = os.path.abspath(os.path.join("..", "..", checkpoint_path))
     if checkpoint_path is None:
         checkpoint_path = os.path.join(
             args.motionclip_repo,
             "exps",
             "paper-model",
-            "checkpoint_0100.pth.tar"
+            "checkpoint_0100.pth.tar",
         )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -876,35 +979,16 @@ def main():
     print("num unique labels:", len(np.unique(y)))
     print("min label:", y.min(), "max label:", y.max())
 
-    if args.split_name is not None and args.normal_classes is not None:
-        print(f"Using split from command line: {args.split_name} -> {args.normal_classes}")
-        selected_splits = [{
-            "name": args.split_name,
-            "normal_classes": args.normal_classes,
-        }]
-    else:
-        if args.splits_txt is None:
-            raise ValueError(
-                "Either provide --split_name and --normal_classes, or provide --splits_txt"
-            )
-        raise ValueError(
-            "This script is intended for per-split training. "
-            "Pass --split_name and --normal_classes from the shell script."
-        )
+    finetune_global_all_classes(
+        args=args,
+        X=X,
+        y=y,
+        checkpoint_path=checkpoint_path,
+        device=device,
+    )
 
-    for split in selected_splits:
-        finetune_one_split(
-            args=args,
-            X=X,
-            y=y,
-            checkpoint_path=checkpoint_path,
-            device=device,
-            split_name=split["name"],
-            normal_classes=split["normal_classes"],
-        )
-
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
