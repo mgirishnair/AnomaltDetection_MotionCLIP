@@ -1,0 +1,113 @@
+=== LABELS IN DATA BUT NOT IN DICTIONARY ===
+apply cream on hand back
+butt kicks (kick backward)
+carry something with other person
+cutting paper (using scissors)
+exchange things with other person
+finger-guessing game (playing rock-paper-scissors)
+follow other person
+grab other person’s stuff
+hands up (both hands)
+hit other person with something
+hush (quite)
+juggling table tennis balls
+knock over other person (hit with body)
+make ok sign
+put something into a bag
+running on the spot
+shoot at other person with a gun
+shoot at the basket
+snapping fingers
+sniff (smell)
+support somebody with hand
+take a photo of other person
+take something out of a bag
+whisper in other person’s ear
+wield knife towards other person
+
+=== LABELS IN DICTIONARY BUT NOT IN DATA ===
+apply cream on hand
+brushing hair
+brushing teeth
+butt kicks
+capitulate
+carry object
+check time (from watch)
+cheer up
+clapping
+cross hands in front (say stop)
+cutting paper
+drink water
+drop
+eat meal/snack
+exchange things
+falling
+follow
+giving something to other person
+grab stuff
+hand waving
+handshaking
+hit with object
+hopping (one foot jumping)
+hugging other person
+hush
+juggle table tennis ball
+jump up
+kicking other person
+kicking something
+knock over
+make OK sign
+make a phone call/answer phone
+nausea or vomiting condition
+nod head/bow
+pat on back of other person
+pickup
+playing with phone/tablet
+point finger at the other person
+pointing to something with finger
+punching/slapping other person
+pushing other person
+put object into bag
+put on a hat/cap
+put the palms together
+reach into pocket
+reading
+rock-paper-scissors
+rub two hands together
+run on the spot
+salute
+shake head
+shoot at basket
+shoot with gun
+sitting down
+snap fingers
+sneeze/cough
+sniff/smell
+staggering
+standing up (from sitting position)
+support somebody
+take a photo
+take object out of bag
+take off a hat/cap
+take off a shoe
+take off glasses
+take off jacket
+taking a selfie
+tear up paper
+throw
+touch back (backache)
+touch chest (stomachache/heart pain)
+touch head (headache)
+touch neck (neckache)
+touch other person's pocket
+typing on a keyboard
+use a fan (with hand or paper)/feeling warm
+walking apart from each other
+walking towards each other
+wear a shoe
+wear jacket
+wear on glasses
+whisper
+wield knife
+wipe face
+writing

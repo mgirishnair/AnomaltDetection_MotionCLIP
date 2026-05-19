@@ -1,15 +1,15 @@
 #!/bin/sh
 
 #SBATCH --job-name="motionclip_finetune_contrastiveSplit_positiveLoss"
-#SBATCH --partition=gpu-a100
+#SBATCH --partition=gpu-a100-small
 #SBATCH --time=02:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-task=1
-#SBATCH --mem-per-gpu=16G
+#SBATCH --mem-per-gpu=10G
 #SBATCH --account=Education-EEMCS-MSc-DSAIT
 #SBATCH --array=0-5
-#SBATCH --output=/scratch/mgirishnair/Thesis/SLURM_logs/finetune/%x_%A_%a.out
+#SBATCH --output=/scratch/mgirishnair/Thesis/SLURM_logs/finetune/splitwise/lessNeg/%x_%A_%a.out
 
 echo "Job started on $(hostname)"
 echo "SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID}"
@@ -26,7 +26,7 @@ source ~/.bashrc
 conda activate motionclip
 
 SPLITS_TXT="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/splits/finetune_splits.txt"
-HPARAMS_TXT="/scratch/mgirishnair/Thesis/SLURM_logs/optuna/contrastive_splitwise_positiveLoss/output_summary.txt"
+HPARAMS_TXT="/scratch/mgirishnair/Thesis/SLURM_logs/optuna/testSplitwise/lessNeg/output_summary.txt"
 
 
 # 0-based: task 0 reads line 1, task 1 reads line 2, ...
@@ -86,7 +86,13 @@ echo "  weight_decay=${WEIGHT_DECAY}"
 echo "  n_classes_per_batch=${N_CLASSES_PER_BATCH}"
 echo "  batch_size=${BATCH_SIZE}"
 
-python /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/finetune_contrastive_split.py \
+GPU_LOG=GPU_usage.log
+
+nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits -l 1 > $GPU_LOG &
+GPU_MONITOR_PID=$!
+
+
+python /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/finetune_contrastive_split_lessNeg.py \
   --x_path /scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/X.npy \
   --y_path /scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/y.npy \
   --motionclip_repo MotionCLIP \
@@ -100,6 +106,7 @@ python /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/fi
   --lr_encoder ${LR_ENCODER} \
   --weight_decay ${WEIGHT_DECAY} \
   --contrastive_temp ${CONTRASTIVE_TEMP} \
+  --contrastive_neg_weight 0.1 \
   --use_class_aware_sampler \
   --n_classes_per_batch ${N_CLASSES_PER_BATCH} \
   --n_samples_per_class ${N_SAMPLES_PER_CLASS} \
@@ -111,7 +118,13 @@ python /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/fi
   --scheduler_min_lr 1e-7 \
   --min_delta 0.0 \
   --num_workers 2 \
-  --output_dir /scratch/mgirishnair/Thesis/MotionCLIP_experiment/finetune/contrastive_splitwise_positiveLoss \
+  --output_dir /scratch/mgirishnair/Thesis/MotionCLIP_experiment/finetune/contrastive_splitwise_positiveLoss/lessNeg \
   --save_checkpoint motionclip_finetuned_${SPLIT_NAME}.pth \
   --save_metrics_npz finetune_metrics_${SPLIT_NAME}.npz \
   --save_summary finetune_summary_${SPLIT_NAME}.json
+
+
+kill $GPU_MONITOR_PID
+
+echo "Max GPU memory usage:"
+awk 'max<$1 {max=$1} END {print max " MiB"}' $GPU_LOG

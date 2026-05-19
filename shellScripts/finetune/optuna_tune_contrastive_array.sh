@@ -1,15 +1,15 @@
 #!/bin/sh
 
-#SBATCH --job-name="optuna_motionclip_contrastive"
-#SBATCH --partition=gpu-a100
-#SBATCH --time=07:00:00
+#SBATCH --job-name="optuna_motionclip_ntu120_lessNeg"
+#SBATCH --partition=gpu-a100-small
+#SBATCH --time=4:00:00
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-task=1
-#SBATCH --mem-per-gpu=16G
+#SBATCH --mem-per-gpu=10G
 #SBATCH --account=Education-EEMCS-MSc-DSAIT
 #SBATCH --array=0-5
-#SBATCH --output=/scratch/mgirishnair/Thesis/SLURM_logs/optuna/testSplitwise/%x_%A_%a.out
+#SBATCH --output=/scratch/mgirishnair/Thesis/SLURM_logs/optuna/splitwise/ntu120/lessNeg/%x_%A_%a_secondFinetune.out
 
 echo "Job started on $(hostname)"
 echo "SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID}"
@@ -48,19 +48,19 @@ NORMAL_CLASSES=$(echo "${CLASS_STR}" | tr ',' ' ' | xargs)
 echo "Parsed split name: ${SPLIT_NAME}"
 echo "Parsed normal classes: ${NORMAL_CLASSES}"
 
-python /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/tune_motionclip_optuna_splitwise.py \
+python /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/tune_motionclip_optuna_splitwise_lessNeg.py \
   --mode contrastive \
-  --study_name "motionclip_contrastive_${SPLIT_NAME}" \
-  --storage "sqlite:////scratch/mgirishnair/Thesis/MotionCLIP_experiment/optuna_dbs/positiveLoss/testSplitwise/motionclip_contrastive_${SPLIT_NAME}.db" \
-  --n_trials 30 \
+  --study_name "motionclip_contrastive__NTU120_lessNeg_${SPLIT_NAME}" \
+  --storage "sqlite:////scratch/mgirishnair/Thesis/MotionCLIP_experiment/optuna_dbs/ntu120/secondFinetune/lessNeg/motionclip_contrastive_ntu120_${SPLIT_NAME}.db" \
+  --n_trials 10 \
   --split_name "${SPLIT_NAME}" \
   --normal_classes ${NORMAL_CLASSES} \
-  --contrastive_script /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/finetune_contrastive_split.py \
+  --contrastive_script /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/finetune_contrastive_split_lessNeg.py \
   --x_path /scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/X.npy \
   --y_path /scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/y.npy \
   --motionclip_repo MotionCLIP \
-  --checkpoint_path MotionCLIP/exps/paper-model/checkpoint_0100.pth.tar \
-  --work_dir optuna_runs/testSplitwise \
+  --checkpoint_path MotionCLIP/exps/paper-model/motionclip_finetuned_lessNeg.pth \
+  --work_dir optuna_runs/ntu120/secondFinetune/lessNeg \
   --train_fraction 0.8 \
   --val_fraction 0.1 \
   --epochs 100 \
@@ -71,6 +71,6 @@ python /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/finetune/tu
   --scheduler_patience 2 \
   --scheduler_factor 0.5 \
   --scheduler_min_lr 1e-4 \
-  --num_workers 4 \
+  --num_workers 2 \
   --pin_memory \
   --seed 42

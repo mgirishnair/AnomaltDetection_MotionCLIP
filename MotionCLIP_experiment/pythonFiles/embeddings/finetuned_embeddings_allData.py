@@ -9,6 +9,10 @@ import math
 import argparse
 from torch.utils.data import Dataset, DataLoader
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
+sys.path.insert(0, PROJECT_ROOT)
+
 from MotionCLIP.src.models.architectures.transformer import Encoder_TRANSFORMER
 
 
@@ -128,6 +132,8 @@ def main():
     parser.add_argument("--checkpoint_path", type=str, required=True)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--output_path", type=str, required=True)
+    parser.add_argument("--split_name", type=str, required=True)
+    parser.add_argument("--normal_classes", type=int, nargs="+", required=True)
     args = parser.parse_args()
 
     X = np.load(args.x_path)
@@ -135,12 +141,14 @@ def main():
 
     split_data = np.load(args.split_indices_path, allow_pickle=True)
 
-    split_name = str(split_data["split_name"])
-    normal_classes = split_data["normal_classes"].astype(np.int64)
-    train_idx = split_data["train_idx"].astype(np.int64)
-    test_idx = split_data["test_idx"].astype(np.int64)
+    split_name = args.split_name
+    normal_classes = np.array(args.normal_classes, dtype=np.int64)
+    train80_idx = split_data["train80_idx"].astype(np.int64)
+    test20_idx = split_data["test20_idx"].astype(np.int64)
 
-    abnormal_idx = np.flatnonzero(~np.isin(y, normal_classes)).astype(np.int64)
+    train_idx = train80_idx[np.isin(y[train80_idx], normal_classes)]
+    test_idx = test20_idx[np.isin(y[test20_idx], normal_classes)]
+    abnormal_idx = test20_idx[~np.isin(y[test20_idx], normal_classes)]
 
     X_train_normal = X[train_idx]
     y_train_normal = y[train_idx]
@@ -154,6 +162,8 @@ def main():
     print("Loaded split file:", args.split_indices_path)
     print("Split name:", split_name)
     print("Normal classes:", normal_classes.tolist())
+    print("train80_idx shape:", train80_idx.shape)
+    print("test20_idx shape:", test20_idx.shape)
     print("train_idx shape:", train_idx.shape)
     print("test_idx shape:", test_idx.shape)
     print("abnormal_idx shape:", abnormal_idx.shape)

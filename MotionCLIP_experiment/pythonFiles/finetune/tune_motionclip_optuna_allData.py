@@ -70,7 +70,6 @@ def run_one_trial(args, params, trial_number):
         "--lr_encoder", str(params["lr_encoder"]),
         "--weight_decay", str(params["weight_decay"]),
         "--contrastive_temp", str(params["contrastive_temp"]),
-        "--contrastive_neg_weight", "0.1",
         "--use_class_aware_sampler",
         "--n_classes_per_batch", str(params["n_classes_per_batch"]),
         "--n_samples_per_class", str(params["n_samples_per_class"]),

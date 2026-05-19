@@ -1,0 +1,60 @@
+walk
+stand
+hand movements
+turn
+interact with/use object
+arm movements
+t pose
+step
+backwards movement
+raising body part
+look
+touch object
+leg movements
+forward movement
+circular movement
+stretch
+jump
+touching body part
+sit
+place something
+take/pick something up
+run
+bend
+throw
+foot movements
+a pose
+stand up
+lowering body part
+sideways movement
+move up/down incline
+action with ball
+kick
+gesture
+head movements
+jog
+grasp object
+waist movements
+lift something
+knee movement
+wave
+move something
+swing body part
+catch
+dance
+lean
+greet
+poses
+touching face
+sports move
+exercise/training
+clean something
+punch
+squat
+scratch
+hop
+play sport
+stumble
+crossing limbs
+perform
+martial art

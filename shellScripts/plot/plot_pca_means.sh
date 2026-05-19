@@ -1,14 +1,15 @@
 #!/bin/bash
 #
 #SBATCH --job-name="pca_plot_means"
-#SBATCH --partition=compute-p1
-#SBATCH --time=00:45:00
+#SBATCH --partition=gpu-a100-small
+#SBATCH --time=00:20:00
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=2
+#SBATCH --gpus-per-task=1
 #SBATCH --mem-per-cpu=3400M
 #SBATCH --account=Education-EEMCS-MSc-DSAIT
-#SBATCH --array=0-19
-#SBATCH --output=/scratch/mgirishnair/SLURM_logs/plot_pca/%x_%A_%a.out
+#SBATCH --array=0-5
+#SBATCH --output=/scratch/mgirishnair/Thesis/SLURM_logs/plot_pca/%x_%A_%a.out
 
 module load miniconda3
 module load 2024r1
@@ -23,7 +24,7 @@ python --version
 #module load py-matplotlib/3.7.1
 #module load py-scikit-learn
 
-SPLITS_TXT="/scratch/mgirishnair/MotionCLIP_experiment/splits.txt"
+SPLITS_TXT="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/splits/finetune_splits.txt"
 
 LINE_NUM=$((SLURM_ARRAY_TASK_ID + 1))
 LINE=$(sed -n "${LINE_NUM}p" "$SPLITS_TXT")
@@ -46,8 +47,8 @@ fi
 echo "Parsed split name: $SPLIT_NAME"
 echo "Parsed normal classes: $CLASS_STR"
 
-EMB_DIR="/scratch/mgirishnair/MotionCLIP_experiment/embeddings"
-OUT_DIR="/scratch/mgirishnair/MotionCLIP_experiment/plots/all"
+EMB_DIR="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/embeddings/contrastive_splitwise/lessNeg"
+OUT_DIR="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/plots/finetune/contrastive_split/lessNeg"
 
 EMB_PATH="${EMB_DIR}/motionclip_embeddings_${SPLIT_NAME}_allData.npz"
 OUT_PATH="${OUT_DIR}/pca_${SPLIT_NAME}.png"

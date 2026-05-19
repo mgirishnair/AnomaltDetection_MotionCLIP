@@ -451,8 +451,8 @@ def run_one_epoch(
         model.eval()
 
     if con_criterion is None:
-        #con_criterion = SupervisedContrastiveLoss(temperature=contrastive_temp)
-        con_criterion = PositiveAttractionLoss(temperature=contrastive_temp)
+        con_criterion = SupervisedContrastiveLoss(temperature=contrastive_temp)
+        #con_criterion = PositiveAttractionLoss(temperature=contrastive_temp)
 
     total_loss = 0.0
     total_samples = 0
@@ -637,8 +637,8 @@ def finetune_one_split(args, X, y, checkpoint_path, device, split_name, normal_c
             min_lr=args.scheduler_min_lr,
         )
 
-    #con_criterion = SupervisedContrastiveLoss(temperature=args.contrastive_temp)
-    con_criterion = PositiveAttractionLoss(temperature=args.contrastive_temp)
+    con_criterion = SupervisedContrastiveLoss(temperature=args.contrastive_temp)
+    #con_criterion = PositiveAttractionLoss(temperature=args.contrastive_temp)
 
     best_val_loss = float("inf")
     best_epoch = -1

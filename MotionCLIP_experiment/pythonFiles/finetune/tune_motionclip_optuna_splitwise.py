@@ -12,12 +12,12 @@ import optuna
 def build_trial_params(trial, mode):
     if mode == "contrastive":
         return {
-            "lr_encoder": trial.suggest_float("lr_encoder", 3e-6, 1e-4, log=True),
-            "contrastive_temp": trial.suggest_float("contrastive_temp", 0.1, 0.4, log=True),
+            "lr_encoder": trial.suggest_float("lr_encoder", 2e-6, 3e-5, log=True),
+            "contrastive_temp": trial.suggest_float("contrastive_temp", 0.12, 0.3, log=True),
             "n_samples_per_class": trial.suggest_categorical(
-                "n_samples_per_class", [6, 8, 10]
+                "n_samples_per_class", [4, 6, 8]
             ),
-            "weight_decay": trial.suggest_float("weight_decay", 1e-5, 5e-4, log=True),
+            "weight_decay": trial.suggest_float("weight_decay", 1e-5, 3e-4, log=True),
         }
 
     if mode == "classcontras":

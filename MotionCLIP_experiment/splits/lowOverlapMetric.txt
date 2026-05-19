@@ -1,0 +1,7 @@
+paper_object_interaction: 82,83,84,73
+fine_hand_tasks: 74,75,76
+device_and_small_objects: 30,29,33,78
+body_gestures: 34,27,10,39
+pose_and_arm_motion: 99,63,12,11
+personal_actions: 45,85,86
+basic_actions_misc: 22,26

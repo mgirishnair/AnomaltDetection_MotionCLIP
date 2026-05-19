@@ -8,12 +8,12 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from NTU_actions import NTU_ACTIONS
 
 NUM_WORKERS = 8
-PRINT_EVERY = 500 #for now 20, change it to 500 or something
+PRINT_EVERY = 5000 #for now 20, change it to 500 or something
 CHUNK_SIZE = 1000
 
-INPUT_DIR = r"/scratch/mgirishnair/Pose_to_SMPL/fit/output/NTU"
-OUTPUT_DIR = r"/scratch/mgirishnair/MotionCLIP_ready_datasetFinalAll"
-PKL_LIST_FILE = r"/scratch/mgirishnair/smpl_pkl_files_all.txt"
+INPUT_DIR = r"/scratch/mgirishnair/Pose_to_SMPL/fit/output/NTU_120"
+OUTPUT_DIR = r"/scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll_120"
+PKL_LIST_FILE = r"/scratch/mgirishnair/Thesis/smpl_pkl_files_120.txt"
 TARGET_FRAMES = 60
 
 def process_file_safe(pkl_path: str):

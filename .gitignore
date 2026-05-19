@@ -18,7 +18,6 @@ env/
 MotionCLIP_experiment/embeddings/
 MotionCLIP_experiment/**/checkpoint_*.pth*
 MotionCLIP_experiment/**/checkpoint_*.tar
-MotionCLIP_experiment/MotionCLIP/src/models/
 MotionCLIP_experiment/MotionCLIP/src/datasets/
 MotionCLIP_experiment/MotionCLIP/src/visuals/
 MotionCLIP_experiment/optuna_dbs/

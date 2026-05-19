@@ -1,20 +1,20 @@
 #!/bin/sh
 
-#SBATCH --job-name="motionclip_computeEmbeddings_split_contrastive"
+#SBATCH --job-name="motionclip_computeEmbeddings_split_contrastive_lessNeg_second"
 #SBATCH --partition=gpu-a100-small
-#SBATCH --time=01:00:00
+#SBATCH --time=00:30:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-task=1
-#SBATCH --mem-per-gpu=16G
+#SBATCH --mem-per-gpu=10G
 #SBATCH --account=Education-EEMCS-MSc-DSAIT
 #SBATCH --array=0-5
-#SBATCH --output=/scratch/mgirishnair/SLURM_logs/embeddings/%x_%A_%a.out
+#SBATCH --output=/scratch/mgirishnair/Thesis/SLURM_logs/embeddings/NTU120/lessNeg/%x_%A_%a.out
 
 echo "Job started on $(hostname)"
 echo "SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID}"
 
-cd /scratch/mgirishnair/MotionCLIP_experiment
+cd /scratch/mgirishnair/Thesis/MotionCLIP_experiment
 
 module load miniconda3
 module load 2024r1
@@ -23,7 +23,7 @@ module load cuda/11.7
 source ~/.bashrc
 conda activate motionclip
 
-SPLITS_TXT="/scratch/mgirishnair/MotionCLIP_experiment/finetune_splits.txt"
+SPLITS_TXT="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/splits/finetune_splits.txt"
 
 LINE_NUM=$((SLURM_ARRAY_TASK_ID + 1))
 LINE=$(sed -n "${LINE_NUM}p" "${SPLITS_TXT}")
@@ -48,14 +48,14 @@ NORMAL_CLASSES=$(echo "${CLASS_STR}" | tr ',' ' ' | xargs)
 echo "Parsed split name: ${SPLIT_NAME}"
 echo "Parsed normal classes: ${NORMAL_CLASSES}"
 
-X_PATH="/scratch/mgirishnair/MotionCLIP_ready_datasetFinalAll/X.npy"
-Y_PATH="/scratch/mgirishnair/MotionCLIP_ready_datasetFinalAll/y.npy"
+X_PATH="/scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/X.npy"
+Y_PATH="/scratch/mgirishnair/Thesis/MotionCLIP_ready_datasetFinalAll/y.npy"
 
-FINETUNE_DIR="/scratch/mgirishnair/MotionCLIP_experiment/finetune/contrastive_splitwise/final"
+FINETUNE_DIR="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/finetune/ntu120/lessNeg/ntu120/secondFinetuning/secondFinetune"
 SPLIT_INDICES_PATH="${FINETUNE_DIR}/${SPLIT_NAME}/${SPLIT_NAME}_split_indices.npz"
 CHECKPOINT_PATH="${FINETUNE_DIR}/${SPLIT_NAME}/motionclip_finetuned_${SPLIT_NAME}.pth"
 
-EMBEDDINGS_DIR="/scratch/mgirishnair/MotionCLIP_experiment/embeddings/contrastive_splitwise/final"
+EMBEDDINGS_DIR="/scratch/mgirishnair/Thesis/MotionCLIP_experiment/embeddings/NTU120/secondFinetuning/lessNeg"
 mkdir -p "${EMBEDDINGS_DIR}"
 
 OUTPUT_PATH="${EMBEDDINGS_DIR}/motionclip_embeddings_${SPLIT_NAME}.npz"
@@ -70,7 +70,7 @@ if [ ! -f "${CHECKPOINT_PATH}" ]; then
   exit 1
 fi
 
-python /scratch/mgirishnair/MotionCLIP_experiment/finetuned_embeddings.py \
+python /scratch/mgirishnair/Thesis/MotionCLIP_experiment/pythonFiles/embeddings/finetuned_embeddings.py \
   --x_path "${X_PATH}" \
   --y_path "${Y_PATH}" \
   --split_indices_path "${SPLIT_INDICES_PATH}" \

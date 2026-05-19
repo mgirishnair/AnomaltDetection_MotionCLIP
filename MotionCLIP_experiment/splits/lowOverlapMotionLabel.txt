@@ -1,0 +1,3 @@
+wear_something: 21,15,14,20
+body_discomfort: 46,38,34,42
+arm_movement: 13,30,31

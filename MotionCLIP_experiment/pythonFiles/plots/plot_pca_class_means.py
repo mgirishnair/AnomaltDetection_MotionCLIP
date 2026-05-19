@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 
 try:
     import umap
@@ -335,6 +336,124 @@ def plot_umap(
     ax.set_title(title, fontsize=15)
     ax.set_xlabel("UMAP1")
     ax.set_ylabel("UMAP2")
+    ax.grid(True, alpha=0.25)
+
+    handles, labels = ax.get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    ax.legend(
+        by_label.values(),
+        by_label.keys(),
+        loc="upper left",
+        bbox_to_anchor=(1.02, 1.0),
+        borderaxespad=0.0,
+        fontsize=9,
+        frameon=True,
+    )
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    plt.tight_layout(rect=[0, 0, 0.78, 1])
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+def plot_tsne(
+    Z_train_normal,
+    Z_test_normal,
+    Z_test_abnormal,
+    y_train_normal,
+    y_test_normal,
+    y_test_abnormal,
+    split_name,
+    normal_classes,
+    output_path,
+    max_abnormal_points=200,
+    abnormal_seed=42,
+):
+    Z_all = np.concatenate([Z_train_normal, Z_test_normal, Z_test_abnormal], axis=0)
+
+    perplexity = min(30, max(5, (len(Z_all) - 1) // 3))
+
+    reducer = TSNE(
+        n_components=2,
+        perplexity=perplexity,
+        init="pca",
+        learning_rate="auto",
+        random_state=42,
+    )
+
+    Z_2d = reducer.fit_transform(Z_all)
+
+    n_train = len(Z_train_normal)
+    n_test_normal = len(Z_test_normal)
+
+    train_2d = Z_2d[:n_train]
+    test_normal_2d = Z_2d[n_train:n_train + n_test_normal]
+    test_abnormal_2d = Z_2d[n_train + n_test_normal:]
+
+    abn_pts_plot, _ = subsample_points(
+        test_abnormal_2d,
+        y_test_abnormal,
+        max_points=max_abnormal_points,
+        seed=abnormal_seed,
+    )
+
+    cmap = plt.get_cmap("tab10")
+    normal_cls_list = sorted(np.unique(y_test_normal))
+    color_map = {cls: cmap(i % 10) for i, cls in enumerate(normal_cls_list)}
+
+    fig, ax = plt.subplots(figsize=(11, 8))
+
+    first_train_label = True
+    for cls in np.unique(y_train_normal):
+        mask = y_train_normal == cls
+        pts = train_2d[mask]
+        c = color_map.get(int(cls), "C0")
+        ax.scatter(
+            pts[:, 0],
+            pts[:, 1],
+            s=10,
+            alpha=0.18,
+            color=c,
+            label="train normal" if first_train_label else None,
+            zorder=2,
+        )
+        first_train_label = False
+
+    first_test_label = True
+    for cls in np.unique(y_test_normal):
+        mask = y_test_normal == cls
+        pts = test_normal_2d[mask]
+        c = color_map.get(int(cls), "C1")
+        ax.scatter(
+            pts[:, 0],
+            pts[:, 1],
+            s=22,
+            alpha=0.50,
+            marker="^",
+            color=c,
+            label="test normal" if first_test_label else None,
+            zorder=3,
+        )
+        first_test_label = False
+
+    ax.scatter(
+        abn_pts_plot[:, 0],
+        abn_pts_plot[:, 1],
+        s=70,
+        alpha=0.9,
+        marker="x",
+        color="black",
+        linewidths=1.4,
+        label=f"abnormal (subsampled, n={len(abn_pts_plot)})",
+        zorder=5,
+    )
+
+    title = f"t-SNE of MotionCLIP embeddings - {split_name}"
+    if normal_classes is not None:
+        title += f"\nNormal classes: {list(map(int, normal_classes))}"
+
+    ax.set_title(title, fontsize=15)
+    ax.set_xlabel("t-SNE1")
+    ax.set_ylabel("t-SNE2")
     ax.grid(True, alpha=0.25)
 
     handles, labels = ax.get_legend_handles_labels()
@@ -810,6 +929,7 @@ def main():
     hist_path = f"{base}_mahal_hist.png"
     cdf_path = f"{base}_mahal_cdf.png"
     umap_path = f"{base}_umap.png"
+    tsne_path = f"{base}_tsne.png"
 
     plot_distance_histogram(
         d_train_min=d_train_min,
@@ -843,6 +963,20 @@ def main():
         abnormal_seed=args.abnormal_seed,
     )
 
+    plot_tsne(
+        Z_train_normal=data["Z_train_normal"],
+        Z_test_normal=data["Z_test_normal"],
+        Z_test_abnormal=data["Z_test_abnormal"],
+        y_train_normal=data["y_train_normal"],
+        y_test_normal=data["y_test_normal"],
+        y_test_abnormal=data["y_test_abnormal"],
+        split_name=data["split_name"],
+        normal_classes=data["normal_classes"],
+        output_path=tsne_path,
+        max_abnormal_points=args.max_abnormal_points,
+        abnormal_seed=args.abnormal_seed,
+    )
+
     explained = pca.explained_variance_ratio_
     print(f"Saved PCA plot to: {args.output_path}")
     print(f"Saved min-Mahalanobis histogram to: {hist_path}")
@@ -850,7 +984,7 @@ def main():
     print(f"Saved UMAP plot to: {umap_path}")
     print(f"Explained variance ratio: PC1={explained[0]:.4f}, PC2={explained[1]:.4f}")
     print(f"Total shown in 2D: {(explained[0] + explained[1]):.4f}")
-
+    print(f"Saved t-SNE plot to: {tsne_path}")
 
 if __name__ == "__main__":
     main()

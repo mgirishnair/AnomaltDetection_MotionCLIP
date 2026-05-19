@@ -1,0 +1,14 @@
+arms - 0.7576
+dressing - 0.8528
+fighting - 0.7601
+glasses - 0.9033
+handshaking - 0.7602
+random1 - 0.7786
+random10 - 0.6939
+random2 - 0.6836
+random3 - 0.8622
+random4 - 0.8059
+random7 - 0.8701
+random8 - 0.6654
+touching - 0.7253
+waving - 0.7151

@@ -1,0 +1,3 @@
+discomfort - 0.7646
+movement - 0.8558
+something - 0.9085

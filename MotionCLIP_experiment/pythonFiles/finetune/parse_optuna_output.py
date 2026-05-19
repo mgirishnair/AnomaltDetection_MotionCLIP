@@ -4,10 +4,12 @@ import sys
 
 def extract_best_trial(text: str):
     split_match = re.search(r'^\s*split\s*:\s*(\S+)\s*$', text, re.MULTILINE)
-    if not split_match:
-        return None
+    split_name = split_match.group(1) if split_match else "global_all_classes"
 
-    split_name = split_match.group(1)
+    #if not split_match:
+        #return None
+
+    #split_name = split_match.group(1)
 
     block_match = re.search(
         r'Best trial:\s*'

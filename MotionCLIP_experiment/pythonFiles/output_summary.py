@@ -4,7 +4,7 @@ import re
 
 
 
-INPUT_DIR = "/scratch/mgirishnair/MotionCLIP_experiment/results/multimodal/classwiseGaussian/contrastiveSplit/final"
+INPUT_DIR = "/scratch/mgirishnair/Thesis/MotionCLIP_experiment/results/finetune/allSplits/fullContras/lowOverlap/NTU61-120"
 
 OUTPUT_FILE = "auroc_summary.txt"
 

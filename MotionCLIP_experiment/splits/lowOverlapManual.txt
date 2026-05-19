@@ -1,0 +1,9 @@
+clothing_upper: 14,15,20,21
+device_interaction: 29,30,32,33
+body_pain: 44,45,46,47
+body_gestures: 10,27,37
+
+
+#accessories: 18,19,61,62
+#fine_object_manipulation: 74,75,73,84
+#face_hygiene: 37,105,79,68,34
